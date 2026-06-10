@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PersonalAccount.Constants;
 using PersonalAccount.Services.Cabinet;
 using PersonalAccount.Services.Tokens;
 using PersonalAccount.Types;
@@ -11,7 +12,8 @@ namespace PersonalAccount.Controllers;
 [Authorize(Roles = AccountRoleConstants.Student)]
 public class StudentCabinetController(
     IStudentCabinetService cabinetService,
-    IConfirmationTokenService confirmationTokenService) : Controller
+    IConfirmationTokenService confirmationTokenService
+    ) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -20,17 +22,18 @@ public class StudentCabinetController(
         var accountEmail = User.GetEmail();
         if (accountId == null || accountEmail == null) return Forbid();
 
-        var student = await cabinetService.GetByAccountIdAsync(accountId.Value);
-        if (student == null) return RedirectToAction("Error", "Home");
-        var confirmed = await confirmationTokenService.HasConfirmedTokenAsync(student.AccountId);
-        var group = student.GroupId == null ? null : await cabinetService.GetGroupByIdAsync(student.GroupId.Value);
+        var studentProfile = await cabinetService.GetProfileAsync(accountId.Value);
+        if (studentProfile == null) return RedirectToAction("Error", "Home");
+        var confirmed = await confirmationTokenService.HasConfirmedTokenAsync(studentProfile.AccountId);
+        var group = await cabinetService.GetGroupAsync(studentProfile.GroupId);
+        if (group == null) return RedirectToAction("Error", "Home");
 
         return View(new StudentCabinetViewModel
         {
-            FullName = student.FullName,
+            FullName = studentProfile.FullName,
             Email = accountEmail,
-            GroupName = group?.Name ?? "Без группы",
-            PhotoUrl = student.PhotoUrl?.ToString(),
+            GroupName = group.Name,
+            PhotoUrl = studentProfile.PhotoUrl?.ToString(),
             IsEmailConfirmed = confirmed
         });
     }

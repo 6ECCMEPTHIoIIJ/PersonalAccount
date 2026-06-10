@@ -1,6 +1,6 @@
 ﻿namespace PersonalAccount.ViewModels;
 
-public class AdminCabinetStudentViewModel
+public class AdminPanelStudentViewModel : ViewModel
 {
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -8,7 +8,7 @@ public class AdminCabinetStudentViewModel
     public string? PhotoUrl { get; set; }
 }
 
-public class AdminCabinetViewModel
+public class AdminPanelViewModel : ViewModel
 {
-    public List<AdminCabinetStudentViewModel> Students { get; set; } = [];
+    public List<AdminPanelStudentViewModel> Students { get; set; } = [];
 }

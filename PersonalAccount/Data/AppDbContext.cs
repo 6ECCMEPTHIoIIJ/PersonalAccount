@@ -1,26 +1,29 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PersonalAccount.Data.Entities;
+using PersonalAccount.Utils;
 
 namespace PersonalAccount.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
-    public DbSet<GroupEntity> Groups => Set<GroupEntity>();
-    public DbSet<StudentProfileEntity> StudentProfiles => Set<StudentProfileEntity>();
     public DbSet<ConfirmationTokenEntity> ConfirmationTokens => Set<ConfirmationTokenEntity>();
+
+    public DbSet<GroupEntity> Groups => Set<GroupEntity>();
+    public DbSet<DisciplineEntity> Disciplines => Set<DisciplineEntity>();
+    public DbSet<TeacherGroupDisciplineEntity> TeacherGroupSubjets => Set<TeacherGroupDisciplineEntity>();
+
+    public DbSet<StudentProfileEntity> StudentProfiles => Set<StudentProfileEntity>();
+    public DbSet<TeacherProfileEntity> TeacherProfiles => Set<TeacherProfileEntity>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<GroupEntity>(entity =>
         {
-            entity.ToTable("groups");
-            entity.HasKey(group => group.Id);
-
-            entity.Property(group => group.Id)
-                .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+            entity.BuildEntity("groups");
 
             entity.Property(group => group.Name)
                 .HasColumnName("name")
@@ -30,26 +33,60 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(group => group.Description)
                 .HasColumnName("description")
                 .HasMaxLength(2047)
+                .HasDefaultValue(string.Empty)
                 .IsRequired();
 
             entity.Property(group => group.ImageUrl)
-                .HasColumnName("photo_url")
+                .HasColumnName("image_url")
                 .HasMaxLength(2047);
-            
-            entity.HasMany(group => group.StudentProfiles)
-                .WithOne(student => student.Group)
-                .HasForeignKey(student => student.GroupId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
+
+        modelBuilder.Entity<DisciplineEntity>(entity =>
+        {
+            entity.BuildEntity("disciplines");
+
+            entity.Property(discipline => discipline.Name)
+                .HasColumnName("name")
+                .HasMaxLength(255)
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<TeacherGroupDisciplineEntity>(entity =>
+        {
+            entity.BuildEntity("teacher_group_subjets");
+
+            entity.Property(link => link.GroupId)
+                .HasColumnName("group_id")
+                .IsRequired();
+
+            entity.Property(link => link.DisciplineId)
+                .HasColumnName("discipline_id")
+                .IsRequired();
+
+            entity.Property(link => link.TeacherAccountId)
+                .HasColumnName("teacher_account_id")
+                .IsRequired();
+
+            entity.HasOne(link => link.Group)
+                .WithMany(group => group.TeacherGroupSubjets)
+                .HasForeignKey(link => link.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(link => link.Discipline)
+                .WithMany(discipline => discipline.TeacherGroupDisciplines)
+                .HasForeignKey(link => link.DisciplineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(link => link.TeacherAccount)
+                .WithMany(account => account.TeacherGroupSubjets)
+                .HasForeignKey(link => link.TeacherAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<AccountEntity>(entity =>
         {
-            entity.ToTable("accounts");
-            entity.HasKey(account => account.Id);
+            entity.BuildEntity("accounts");
             entity.HasIndex(account => account.Email).IsUnique();
-
-            entity.Property(account => account.Id)
-                .HasColumnName("id")
-                .ValueGeneratedOnAdd();
 
             entity.Property(account => account.Role)
                 .HasColumnName("role")
@@ -64,46 +101,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasColumnName("password_hash")
                 .IsRequired();
         });
+
         modelBuilder.Entity<StudentProfileEntity>(entity =>
         {
-            entity.ToTable("student_profiles");
-            entity.HasKey(student => student.ProfileId);
-            entity.HasIndex(student => student.AccountId).IsUnique();
-
-            entity.Property(student => student.ProfileId)
-                .HasColumnName("profile_id")
-                .ValueGeneratedOnAdd();
-
-            entity.Property(student => student.AccountId)
-                .HasColumnName("account_id")
-                .IsRequired();
-
-            entity.Property(student => student.FullName)
-                .HasColumnName("full_name")
-                .HasMaxLength(255)
-                .IsRequired();
+            entity.BuildProfileEntity("student_profiles", account => account.StudentProfile);
 
             entity.Property(student => student.GroupId)
                 .HasColumnName("group_id");
 
-            entity.Property(student => student.PhotoUrl)
-                .HasColumnName("photo_url")
-                .HasMaxLength(2047);
+            entity.HasOne(student => student.Group)
+                .WithMany(group => group.StudentProfiles)
+                .HasForeignKey(student => student.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
 
-            entity.HasOne(student => student.Account)
-                .WithOne(account => account.StudentProfile)
-                .HasForeignKey<StudentProfileEntity>(student => student.AccountId)
-                .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TeacherProfileEntity>(entity =>
+        {
+            entity.BuildProfileEntity("teacher_profiles", account => account.TeacherProfile);
         });
 
         modelBuilder.Entity<ConfirmationTokenEntity>(entity =>
         {
-            entity.ToTable("confirmation_tokens");
-            entity.HasKey(token => token.Id);
-
-            entity.Property(token => token.Id)
-                .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+            entity.BuildEntity("confirmation_tokens");
 
             entity.Property(token => token.AccountId)
                 .HasColumnName("account_id")

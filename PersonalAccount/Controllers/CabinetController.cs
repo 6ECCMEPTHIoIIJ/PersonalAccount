@@ -17,7 +17,8 @@ public class CabinetController : Controller
         return accountRole.Value switch
         {
             AccountRoles.Student => RedirectToAction("Index", "StudentCabinet"),
-            AccountRoles.Admin => RedirectToAction("Index", "AdminCabinet"),
+            AccountRoles.Teacher => RedirectToAction("Index", "TeacherCabinet"),
+            AccountRoles.Admin => RedirectToAction("Index", "AdminPanel"),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
